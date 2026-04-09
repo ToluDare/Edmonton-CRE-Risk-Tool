@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<!-- saved from url=(0062)file:///C:/Users/daret/Downloads/edmonton_cre_risk_tool_1.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edmonton CRE Risk Tool</title>
+<link rel="stylesheet" href="./Edmonton CRE Risk Tool_files/leaflet.css">
+<style>
+:root{
+  --bg:#F7F3E3;
+  --bg2:#EEE9D4;
+  --bg3:#E5DFC4;
+  --accent:#131B23;
+  --accent2:#2a3a4a;
+  --purple:#534AB7;
+  --purple-light:#EEF0FF;
+  --purple-mid:#c8c4f0;
+  --border:#D9D3BB;
+  --text:#131B23;
+  --muted:#7a7260;
+  --white:#fff;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:var(--bg);color:var(--text);}
+.app{display:flex;flex-direction:column;height:100vh;}
+
+/* TOPBAR */
+.topbar{padding:10px 20px;background:var(--accent);border-bottom:2px solid var(--accent2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;z-index:1000;}
+.topbar-left h1{font-size:16px;font-weight:700;color:var(--bg);}
+.topbar-left p{font-size:11px;color:#8fa0b0;margin-top:1px;}
+.topbar-right{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.stat-badge{font-size:11px;background:var(--accent2);color:var(--bg);padding:5px 11px;border-radius:8px;font-weight:500;cursor:help;border:1px solid #3a4a5a;position:relative;}
+.stat-badge:hover .stat-tip{display:block;}
+.stat-tip{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);color:var(--text);font-size:11px;padding:9px 12px;border-radius:10px;width:230px;line-height:1.6;z-index:9999;font-weight:400;white-space:normal;box-shadow:0 4px 16px rgba(0,0,0,0.15);border:1px solid var(--border);}
+.stat-tip::before{content:'';position:absolute;top:-5px;right:14px;border:5px solid transparent;border-bottom-color:var(--white);border-top:none;}
+.stat-highlight{background:#2d4a2d;color:#a8d8a8;border-color:#3a6a3a;}
+
+/* MAIN */
+.main{display:flex;flex:1;overflow:hidden;}
+.sidebar{width:350px;flex-shrink:0;background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.map-container{flex:1;position:relative;}
+#map{width:100%;height:100%;}
+
+/* FILTER BAR */
+.filter-bar{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;align-items:center;background:var(--bg2);}
+.filter-label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-right:2px;}
+.filter-btn{padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font-size:11px;cursor:pointer;transition:all 0.15s;}
+.filter-btn:hover{border-color:var(--purple);color:var(--purple);}
+.filter-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent);}
+
+/* SEARCH */
+.search-section{padding:12px;border-bottom:1px solid var(--border);background:var(--bg);}
+.search-row{display:flex;gap:6px;}
+#search-input{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--bg2);color:var(--text);outline:none;transition:border 0.2s;}
+#search-input:focus{border-color:var(--purple);background:var(--white);}
+#search-input::placeholder{color:var(--muted);}
+#search-btn{padding:9px 16px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:13px;cursor:pointer;font-weight:600;transition:background 0.2s;}
+#search-btn:hover{background:var(--accent2);}
+#sugg-box{margin-top:6px;background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:none;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(19,27,35,0.12);}
+.sugg-item{padding:9px 12px;font-size:12px;cursor:pointer;color:var(--text);border-bottom:1px solid var(--bg2);}
+.sugg-item:last-child{border-bottom:none;}
+.sugg-item:hover{background:var(--bg2);}
+.sugg-addr{font-size:10px;color:var(--muted);margin-top:1px;}
+
+/* SIDEBAR BODY */
+.sbody{flex:1;overflow-y:auto;padding:14px;}
+.sbody::-webkit-scrollbar{width:4px;}
+.sbody::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* SECTION TITLE */
+.sec-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin:14px 0 8px;}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:1.5rem 1rem;}
+.empty-icon{font-size:32px;margin-bottom:8px;}
+.empty-state h3{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.empty-state p{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;}
+.try-tag{display:inline-block;background:var(--bg2);color:var(--accent);padding:4px 10px;border-radius:20px;font-size:11px;margin:2px;cursor:pointer;border:1px solid var(--border);}
+.try-tag:hover{background:var(--bg3);}
+
+/* PROPERTY TYPE BROWSE */
+.prop-type-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;border:1px solid var(--border);margin-bottom:6px;transition:all 0.15s;background:var(--white);}
+.prop-type-item:hover{border-color:var(--accent);background:var(--bg2);}
+.prop-type-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.prop-type-name{font-size:13px;font-weight:600;color:var(--text);}
+.prop-type-desc{font-size:11px;color:var(--muted);margin-top:1px;}
+.prop-type-arrow{font-size:14px;color:var(--muted);margin-left:auto;}
+
+/* SAVED LIST */
+.pin-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:background 0.15s;border:1px solid transparent;margin-bottom:4px;}
+.pin-item:hover{background:var(--bg2);border-color:var(--border);}
+.pin-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.pin-name{flex:1;font-size:12px;color:var(--text);font-weight:600;}
+.pin-sub{font-size:10px;color:var(--muted);}
+.pin-score{font-size:12px;font-weight:700;}
+.pin-actions{display:flex;gap:4px;margin-left:4px;}
+.pin-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;}
+.pin-del:hover{color:#A32D2D;background:#FCEBEB;}
+
+/* LOADING */
+.loading-wrap{display:flex;align-items:center;gap:10px;padding:16px 0;font-size:12px;color:var(--muted);}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* PROPERTY PANEL */
+.back-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:11px;color:var(--muted);cursor:pointer;margin-bottom:12px;transition:all 0.15s;}
+.back-btn:hover{background:var(--bg2);color:var(--text);}
+.prop-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px;}
+.prop-addr{font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.4;}
+.score-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;margin-bottom:14px;}
+.score-circle{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;}
+.score-label{font-size:14px;font-weight:700;}
+.score-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.ai-box{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;font-size:12px;color:var(--text);line-height:1.65;margin-bottom:10px;}
+.ai-label{font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;}
+.signal-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--bg3);font-size:12px;}
+.signal-row:last-child{border-bottom:none;}
+.signal-label{color:var(--muted);}
+.signal-val{font-weight:600;color:var(--text);}
+.flag{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;}
+.flag-r{background:#FCEBEB;color:#A32D2D;}
+.flag-y{background:#FAEEDA;color:#854F0B;}
+.flag-g{background:#EAF3DE;color:#3B6D11;}
+.tags-wrap{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+.tag{font-size:11px;padding:4px 9px;border-radius:20px;}
+.tag-r{background:#FCEBEB;color:#A32D2D;}
+.tag-g{background:#EAF3DE;color:#3B6D11;}
+.tag-b{background:var(--purple-light);color:var(--purple);}
+.inp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.inp-wrap label{display:block;font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600;}
+.inp-wrap input{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text);background:var(--bg2);outline:none;transition:border 0.2s;}
+.inp-wrap input:focus{border-color:var(--accent);background:var(--white);}
+.btn-primary{width:100%;padding:10px;background:var(--accent);color:var(--bg);border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;transition:background 0.2s;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-secondary{width:100%;padding:10px;background:var(--bg);color:var(--accent);border:2px solid var(--accent);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;transition:all 0.2s;}
+.btn-secondary:hover{background:var(--bg2);}
+.btn-save{width:100%;padding:10px;background:var(--bg2);color:var(--accent);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn-save:hover{background:var(--bg3);}
+.btn-save.saved{background:#EAF3DE;color:#3B6D11;border-color:#97C459;}
+.error-box{padding:12px;background:#FCEBEB;border-radius:10px;font-size:12px;color:#A32D2D;line-height:1.5;margin-bottom:10px;}
+.contact-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+
+/* MAP OVERLAYS */
+.map-legend{position:absolute;bottom:24px;right:12px;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 13px;font-size:11px;color:var(--muted);z-index:500;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+.leg-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.leg-row:last-child{margin-bottom:0;}
+.leg-dot{width:10px;height:10px;border-radius:50%;}
+.map-info{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:6px 16px;font-size:11px;color:var(--accent);z-index:500;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.1);font-weight:500;}
+</style>
+</head>
+<body class="">
+<div class="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>Edmonton CRE Risk Tool</h1>
+      <p>Commercial Real Estate Risk Intelligence · Edmonton &amp; Region</p>
+    </div>
+    <div class="topbar-right">
+      <div class="stat-badge">BoC Rate: 2.75%
+        <div class="stat-tip"><b>Bank of Canada overnight rate.</b> Higher rates = more expensive financing for CRE deals and downward pressure on property values. Currently at 2.75% after cuts from the 2023 peak of 5%.</div>
+      </div>
+      <div class="stat-badge">CMHC Vacancy: 4.2%
+        <div class="stat-tip"><b>Canada Mortgage &amp; Housing Corp vacancy rate for Edmonton.</b> Below 3% = landlord's market. Above 5% = oversupply risk. Edmonton currently sits at a moderate 4.2%.</div>
+      </div>
+      <div class="stat-badge">Avg Cap Rate: 5.8%
+        <div class="stat-tip"><b>Average capitalization rate across Edmonton CRE asset classes.</b> Lower cap = higher asset prices. Rising rates since 2022 have pushed Edmonton cap rates up from ~5%.</div>
+      </div>
+      <div class="stat-badge stat-highlight">April 2026</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <!-- SEARCH -->
+      <div class="search-section">
+        <div class="search-row">
+          <input id="search-input" placeholder="Search Edmonton address or property..." autocomplete="off">
+          <button id="search-btn">Search</button>
+        </div>
+        <div id="sugg-box" style="display: none;"><div class="sugg-item"><div>The Parks</div><div class="sugg-addr">9350, Lewis Estates</div></div><div class="sugg-item"><div>The Parks</div><div class="sugg-addr">Central Core, Edmonton</div></div><div class="sugg-item"><div>The Parks</div><div class="sugg-addr">10135, 108 Street NW</div></div></div>
+      </div>
+
+      <!-- FILTER -->
+      <div class="filter-bar">
+        <span class="filter-label">Type:</span>
+        <button class="filter-btn" onclick="setFilter(&#39;all&#39;,this)">All</button>
+        <button class="filter-btn" onclick="setFilter(&#39;Office&#39;,this)">Office</button>
+        <button class="filter-btn" onclick="setFilter(&#39;Retail&#39;,this)">Retail</button>
+        <button class="filter-btn active" onclick="setFilter(&#39;Industrial&#39;,this)">Industrial</button>
+        <button class="filter-btn" onclick="setFilter(&#39;Multifamily&#39;,this)">Multifamily</button>
+      </div>
+
+      <div class="sbody" id="sbody"><div class="error-box">AI analysis failed: Failed to fetch</div><button class="back-btn" onclick="resetPanel()">← Try again</button></div>
+    </div>
+
+    <!-- MAP -->
+    <div class="map-container">
+      <div id="map" class="leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom" tabindex="0" style="position: relative;"><div class="leaflet-pane leaflet-map-pane" style="transform: translate3d(-208.151px, -273.148px, 0px);"><div class="leaflet-pane leaflet-tile-pane"><div class="leaflet-layer " style="z-index: 1; opacity: 1;"><div class="leaflet-tile-container leaflet-zoom-animated" style="z-index: 18; transform: translate3d(-2346px, -1434px, 0px) scale(2);"></div><div class="leaflet-tile-container leaflet-zoom-animated" style="z-index: 19; transform: translate3d(-782px, -478px, 0px) scale(1);"><img alt="" src="./Edmonton CRE Risk Tool_files/1323.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1412px, 796px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1324.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1412px, 1052px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1323(1).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1156px, 796px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1323(2).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1668px, 796px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1324(1).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1156px, 1052px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1324(2).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1668px, 1052px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1322.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1412px, 540px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1325.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1412px, 1308px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1322(1).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1156px, 540px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1322(2).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1668px, 540px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1325(1).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1156px, 1308px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1325(2).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1668px, 1308px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1323(3).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(900px, 796px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1323(4).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1924px, 796px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1324(3).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(900px, 1052px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1324(4).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1924px, 1052px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1322(3).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(900px, 540px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1322(4).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1924px, 540px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1325(3).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(900px, 1308px, 0px); opacity: 1;"><img alt="" src="./Edmonton CRE Risk Tool_files/1325(4).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1924px, 1308px, 0px); opacity: 1;"></div></div></div><div class="leaflet-pane leaflet-overlay-pane"><svg pointer-events="none" class="leaflet-zoom-animated" width="1423" height="766" viewBox="90 209 1423 766" style="transform: translate3d(90px, 209px, 0px);"><g><path stroke="none" stroke-opacity="1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="#0d1117" fill-opacity="0.78" fill-rule="evenodd" d="M1516 978L1516 206L87 206L87 978zM163 978L163 206L1459 206L1459 978z"></path><path stroke="#F7F3E3" stroke-opacity="1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,5" fill="#F7F3E3" fill-opacity="0" fill-rule="evenodd" d="M163 977L163 208L1459 208L1459 977z"></path></g></svg></div><div class="leaflet-pane leaflet-shadow-pane"></div><div class="leaflet-pane leaflet-marker-pane"></div><div class="leaflet-pane leaflet-tooltip-pane"></div><div class="leaflet-pane leaflet-popup-pane"></div><div class="leaflet-proxy leaflet-zoom-animated" style="transform: translate3d(193707px, 338962px, 0px) scale(2048);"></div></div><div class="leaflet-control-container"><div class="leaflet-top leaflet-left"><div class="leaflet-control-zoom leaflet-bar leaflet-control"><a class="leaflet-control-zoom-in" href="file:///C:/Users/daret/Downloads/edmonton_cre_risk_tool_1.html#" title="Zoom in" role="button" aria-label="Zoom in" aria-disabled="false"><span aria-hidden="true">+</span></a><a class="leaflet-control-zoom-out" href="file:///C:/Users/daret/Downloads/edmonton_cre_risk_tool_1.html#" title="Zoom out" role="button" aria-label="Zoom out" aria-disabled="false"><span aria-hidden="true">−</span></a></div></div><div class="leaflet-top leaflet-right"></div><div class="leaflet-bottom leaflet-left"></div><div class="leaflet-bottom leaflet-right"><div class="leaflet-control-attribution leaflet-control"><a href="https://leafletjs.com/" title="A JavaScript library for interactive maps"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" class="leaflet-attribution-flag"><path fill="#4C7BE1" d="M0 0h12v4H0z"></path><path fill="#FFD500" d="M0 4h12v3H0z"></path><path fill="#E0BC00" d="M0 7h12v1H0z"></path></svg> Leaflet</a> <span aria-hidden="true">|</span> © <a href="https://openstreetmap.org/">OpenStreetMap</a></div></div></div></div>
+      <div class="map-info" id="map-info">Edmonton, Alberta</div>
+      <div class="map-legend">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Risk level</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#E24B4A;"></div>High (65+)</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#EF9F27;"></div>Medium (40–64)</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#639922;"></div>Low (&lt;40)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./Edmonton CRE Risk Tool_files/leaflet.js.download"></script>
+<script>
+const ANTHROPIC_API='https://api.anthropic.com/v1/messages';
+let map,assets=[],savedAssets=[],searchTimer,activeFilter='all';
+
+// Load saved assets from localStorage
+try{
+  const stored=localStorage.getItem('cre_saved_assets');
+  if(stored) savedAssets=JSON.parse(stored);
+}catch(e){}
+
+const WORLD_BOUNDS=[
+  [[-90,-180],[-90,180],[90,180],[90,-180]],
+  [[53.395,-113.715],[53.720,-113.715],[53.720,-113.270],[53.395,-113.270]]
+];
+
+const EDMONTON_BOUNDS=[
+  [53.395,-113.715],[53.720,-113.715],[53.720,-113.270],[53.395,-113.270]
+];
+
+window.onload=function(){
+
+map=L.map('map',{zoomControl:true}).setView([53.5461,-113.4938],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>',maxZoom:19
+}).addTo(map);
+
+// Dark mask outside Edmonton
+L.polygon(WORLD_BOUNDS,{color:'none',fillColor:'#0d1117',fillOpacity:0.78,interactive:false}).addTo(map);
+// Edmonton border
+L.polygon(EDMONTON_BOUNDS,{color:'#F7F3E3',weight:1.5,fillOpacity:0,dashArray:'6,5',interactive:false}).addTo(map);
+
+// Re-pin any saved assets
+savedAssets.forEach((a,i)=>{
+  const s=a.userScore||a.info.baseRiskScore;
+  a.marker=L.marker([a.lat,a.lon],{icon:makeIcon(s,a.info.propertyType)}).addTo(map);
+  a.marker.bindPopup(popupHTML(a.name,s,a.info));
+  a.marker.on('click',()=>showPropertyPanel(a,i,true));
+});
+updateSavedList();
+
+// ── HELPERS ──────────────────────────────────────────────
+function riskColor(s){return s>=65?'#E24B4A':s>=40?'#EF9F27':'#639922';}
+function riskBg(s){return s>=65?'#FCEBEB':s>=40?'#FAEEDA':'#EAF3DE';}
+function riskText(s){return s>=65?'#A32D2D':s>=40?'#854F0B':'#3B6D11';}
+function riskLabel(s){return s>=65?'High risk':s>=40?'Medium risk':'Low risk';}
+function typeEmoji(t){return t==='Office'?'🏢':t==='Retail'?'🛍️':t==='Industrial'?'🏭':t==='Multifamily'?'🏘️':'🏙️';}
+function popupHTML(name,s,info){
+  return `<b style="font-size:13px;">${name}</b><br/><span style="color:${riskColor(s)};font-weight:700;">${riskLabel(s)}: ${s}/100</span><br/><span style="font-size:11px;color:#666;">${info.propertyType} · ${info.neighbourhood}</span>`;
+}
+
+function makeIcon(score,type){
+  const c=riskColor(score);
+  return L.divIcon({
+    html:`<div style="background:${c};width:36px;height:36px;border-radius:50%;border:3px solid #F7F3E3;box-shadow:0 2px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:sans-serif;">${score}</div>`,
+    iconSize:[36,36],iconAnchor:[18,18],className:''
+  });
+}
+
+function persistSaved(){
+  try{
+    const toStore=savedAssets.map(a=>({name:a.name,addr:a.addr,lat:a.lat,lon:a.lon,info:a.info,userScore:a.userScore}));
+    localStorage.setItem('cre_saved_assets',JSON.stringify(toStore));
+  }catch(e){}
+}
+
+// ── FILTER ───────────────────────────────────────────────
+window.setFilter=function(type,btn){
+  activeFilter=type;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const all=[...assets,...savedAssets];
+  all.forEach(a=>{
+    if(!a.marker)return;
+    const show=type==='all'||a.info.propertyType===type;
+    show?a.marker.addTo(map):map.removeLayer(a.marker);
+  });
+};
+
+// ── BROWSE BY TYPE ───────────────────────────────────────
+window.browseType=function(type){
+  const examples={
+    'Office':['Jasper Avenue Office Edmonton','102 Street Edmonton','Stony Plain Road Edmonton','Kingsway Edmonton office'],
+    'Retail':['Whyte Avenue Edmonton','South Edmonton Common','West Edmonton Mall','Kingsway Mall Edmonton'],
+    'Industrial':['Nisku Alberta','Leduc Alberta','Manning Drive Edmonton','Acheson Alberta industrial'],
+    'Multifamily':['Oliver Edmonton','Glenora Edmonton','Millwoods Edmonton','Riverbend Edmonton'],
+    'Mixed-Use':['104 Street Edmonton','124 Street Edmonton','Ellerslie Road Edmonton','Downtown Edmonton mixed']
+  };
+  const list=examples[type]||[];
+  document.getElementById('sbody').innerHTML=`
+    <button class="back-btn" onclick="resetPanel()">← Back</button>
+    <div class="sec-title">${typeEmoji(type)} ${type} — Edmonton locations</div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Click any area to run a full risk analysis.</p>
+    ${list.map(loc=>`<div class="prop-type-item" onclick="quickSearch('${loc}');resetPanel();">
+      <div class="prop-type-icon" style="background:var(--bg2);">📍</div>
+      <div><div class="prop-type-name" style="font-size:12px;">${loc}</div><div class="prop-type-desc">${type} · Edmonton Region</div></div>
+    </div>`).join('')}
+    <div style="height:16px;"></div>`;
+};
+
+// ── SEARCH ───────────────────────────────────────────────
+const searchInput=document.getElementById('search-input');
+const suggBox=document.getElementById('sugg-box');
+
+searchInput.addEventListener('input',()=>{
+  clearTimeout(searchTimer);
+  const q=searchInput.value.trim();
+  if(q.length<3){suggBox.style.display='none';return;}
+  searchTimer=setTimeout(()=>fetchSuggestions(q),380);
+});
+searchInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){suggBox.style.display='none';doSearch(searchInput.value.trim());}
+});
+document.getElementById('search-btn').onclick=()=>{suggBox.style.display='none';doSearch(searchInput.value.trim());};
+document.addEventListener('click',e=>{if(!e.target.closest('.search-section'))suggBox.style.display='none';});
+window.quickSearch=function(q){searchInput.value=q;doSearch(q);};
+
+async function fetchSuggestions(q){
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+' Edmonton Alberta Canada')}&format=json&limit=5&addressdetails=1`,{headers:{'Accept':'application/json'}});
+    const data=await r.json();
+    suggBox.innerHTML='';
+    if(!data.length){suggBox.style.display='none';return;}
+    data.forEach(item=>{
+      const parts=item.display_name.split(',');
+      const d=document.createElement('div');
+      d.className='sugg-item';
+      d.innerHTML=`<div>${parts[0]}</div><div class="sugg-addr">${parts.slice(1,3).join(',').trim()}</div>`;
+      d.onclick=()=>{searchInput.value=parts[0];suggBox.style.display='none';analyzeProperty(item);};
+      suggBox.appendChild(d);
+    });
+    suggBox.style.display='block';
+  }catch(e){suggBox.style.display='none';}
+}
+
+async function doSearch(q){
+  if(!q)return;
+  suggBox.style.display='none';
+  showLoading('Locating property...');
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+' Edmonton Alberta Canada')}&format=json&limit=1&addressdetails=1`,{headers:{'Accept':'application/json'}});
+    const data=await r.json();
+    if(!data.length){showError('Property not found. Try a more specific address.');return;}
+    analyzeProperty(data[0]);
+  }catch(e){showError('Search failed. Ensure you are connected to the internet.<br/><small>'+e.message+'</small>');}
+}
+
+// ── AI ANALYSIS ──────────────────────────────────────────
+async function analyzeProperty(item){
+  const lat=parseFloat(item.lat),lon=parseFloat(item.lon);
+  const addr=item.display_name.split(',').slice(0,5).join(', ');
+  const name=item.display_name.split(',')[0];
+  map.setView([lat,lon],15);
+  document.getElementById('map-info').textContent=name+' · Analyzing...';
+  showLoading('Running AI market analysis...');
+
+  const prompt=`You are a senior CRE risk analyst for Edmonton, Alberta (April 2026). User queried: "${addr}" (${lat}, ${lon}).
+Respond ONLY raw JSON no markdown:
+{"propertyType":"Office or Retail or Industrial or Multifamily or Mixed-Use","neighbourhood":"specific Edmonton name","neighbourhoodProfile":"2-3 sentences on this submarket CRE traits and 2026 conditions","marketVacancyEst":number,"capRateEst":number,"transitScore":number 0-100,"walkScore":number 0-100,"proximitySignals":["s1","s2","s3"],"marketTrend":"Rising or Stable or Declining","marketTrendReason":"1 sentence","riskFactors":["r1","r2"],"opportunities":["o1","o2"],"comparables":["c1","c2"],"baseRiskScore":number 0-100,"contactInfo":{"ownerType":"likely owner type","managementCompany":"likely mgmt firms in this submarket","brokerageArea":"brokerages active here","assessedValueEst":"estimated value range CAD","yearBuiltEst":"construction era"}}`;
+
+  try{
+    const res=await fetch(ANTHROPIC_API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,messages:[{role:'user',content:prompt}]})
+    });
+    if(!res.ok)throw new Error('API '+res.status);
+    const d=await res.json();
+    const text=d.content?.map(b=>b.text||'').join('')||'';
+    let info;
+    try{info=JSON.parse(text.replace(/```json|```/g,'').trim());}
+    catch{info={propertyType:'Commercial',neighbourhood:'Edmonton',neighbourhoodProfile:'This Edmonton location features mixed commercial activity. The submarket shows stable fundamentals with moderate demand.',marketVacancyEst:8,capRateEst:5.8,transitScore:58,walkScore:62,proximitySignals:['Mixed commercial corridor','Transit accessible','Growing residential catchment'],marketTrend:'Stable',marketTrendReason:'Edmonton showing steady fundamentals in 2026.',riskFactors:['Interest rate sensitivity','Lease rollover exposure'],opportunities:['Repositioning potential','Population growth'],comparables:['Properties trading at market rates','Comparable submarket vacancy'],baseRiskScore:45,contactInfo:{ownerType:'Private',managementCompany:'Various local firms',brokerageArea:'Avison Young, CBRE, Colliers Edmonton',assessedValueEst:'Subject to City of Edmonton assessment',yearBuiltEst:'Varies'}};}
+
+    const show=activeFilter==='all'||info.propertyType===activeFilter;
+    const marker=L.marker([lat,lon],{icon:makeIcon(info.baseRiskScore,info.propertyType)});
+    if(show)marker.addTo(map);
+    marker.bindPopup(popupHTML(name,info.baseRiskScore,info));
+    marker.openPopup();
+
+    const asset={name,addr,lat,lon,info,marker,userScore:null};
+    const idx=assets.length;
+    assets.push(asset);
+    marker.on('click',()=>showPropertyPanel(asset,idx,false));
+    document.getElementById('map-info').textContent=name+' · '+info.neighbourhood;
+    showPropertyPanel(asset,idx,false);
+  }catch(e){
+    showError('AI analysis failed: '+e.message);
+    document.getElementById('map-info').textContent='Edmonton, Alberta';
+  }
+}
+
+// ── PROPERTY PANEL ────────────────────────────────────────
+function showPropertyPanel(asset,idx,isSaved){
+  const s=asset.userScore||asset.info.baseRiskScore;
+  const i=asset.info;
+  const c=i.contactInfo||{};
+  const alreadySaved=savedAssets.some(a=>a.name===asset.name&&a.addr===asset.addr);
+
+  document.getElementById('sbody').innerHTML=`
+    <button class="back-btn" onclick="resetPanel()">← Back</button>
+    <div class="prop-name">${asset.name}</div>
+    <div class="prop-addr">${asset.addr}</div>
+
+    <div class="score-card" style="background:${riskBg(s)};">
+      <div class="score-circle" style="background:${riskColor(s)};">${s}</div>
+      <div>
+        <div class="score-label" style="color:${riskText(s)};">${riskLabel(s)}</div>
+        <div class="score-sub">${i.propertyType} · ${i.neighbourhood}</div>
+        <div class="score-sub" style="margin-top:3px;">Trend: <b style="color:${riskText(s)};">${i.marketTrend}</b></div>
+      </div>
+    </div>
+
+    <button id="save-btn" class="btn-save ${alreadySaved?'saved':''}" onclick="toggleSave(${idx},${isSaved})">
+      ${alreadySaved?'✓ Saved to portfolio':'+ Save to portfolio'}
+    </button>
+
+    <div class="sec-title">AI submarket analysis</div>
+    <div class="ai-box"><div class="ai-label">Location intelligence</div>${i.neighbourhoodProfile} ${i.marketTrendReason}</div>
+
+    <div class="sec-title">Market signals</div>
+    <div class="signal-row"><span class="signal-label">Est. vacancy rate</span><span class="signal-val">${i.marketVacancyEst}%</span><span class="flag ${i.marketVacancyEst>15?'flag-r':i.marketVacancyEst>8?'flag-y':'flag-g'}">${i.marketVacancyEst>15?'High':i.marketVacancyEst>8?'Watch':'OK'}</span></div>
+    <div class="signal-row"><span class="signal-label">Est. cap rate</span><span class="signal-val">${i.capRateEst.toFixed(1)}%</span><span class="flag ${i.capRateEst<5?'flag-r':i.capRateEst<5.5?'flag-y':'flag-g'}">${i.capRateEst<5?'Low yield':i.capRateEst<5.5?'Watch':'OK'}</span></div>
+    <div class="signal-row"><span class="signal-label">Walk score</span><span class="signal-val">${i.walkScore}/100</span><span class="flag ${i.walkScore>70?'flag-g':i.walkScore>50?'flag-y':'flag-r'}">${i.walkScore>70?'Good':i.walkScore>50?'Fair':'Low'}</span></div>
+    <div class="signal-row"><span class="signal-label">Transit score</span><span class="signal-val">${i.transitScore}/100</span><span class="flag ${i.transitScore>70?'flag-g':i.transitScore>50?'flag-y':'flag-r'}">${i.transitScore>70?'Good':i.transitScore>50?'Fair':'Low'}</span></div>
+
+    <div class="sec-title">Proximity signals</div>
+    ${i.proximitySignals.map(s=>`<div style="font-size:11px;color:var(--muted);padding:5px 0;border-bottom:1px solid var(--bg3);display:flex;gap:6px;"><span style="color:var(--purple);">›</span>${s}</div>`).join('')}
+
+    <div class="sec-title">Risk factors</div>
+    <div class="tags-wrap">${i.riskFactors.map(r=>`<span class="tag tag-r">⚠ ${r}</span>`).join('')}</div>
+
+    <div class="sec-title">Opportunities</div>
+    <div class="tags-wrap">${i.opportunities.map(o=>`<span class="tag tag-g">↑ ${o}</span>`).join('')}</div>
+
+    <div class="sec-title">Comparables</div>
+    <div class="tags-wrap">${(i.comparables||[]).map(c=>`<span class="tag tag-b">${c}</span>`).join('')}</div>
+
+    <div class="sec-title">Property & contact info</div>
+    <div class="contact-card">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">AI-estimated details</div>
+      <div class="signal-row"><span class="signal-label">Owner type</span><span class="signal-val" style="font-size:11px;">${c.ownerType||'Unknown'}</span></div>
+      <div class="signal-row"><span class="signal-label">Est. value range</span><span class="signal-val" style="font-size:11px;">${c.assessedValueEst||'N/A'}</span></div>
+      <div class="signal-row"><span class="signal-label">Construction era</span><span class="signal-val" style="font-size:11px;">${c.yearBuiltEst||'N/A'}</span></div>
+      <div class="signal-row"><span class="signal-label">Area mgmt firms</span><span class="signal-val" style="font-size:11px;">${c.managementCompany||'N/A'}</span></div>
+      <div class="signal-row" style="border-bottom:none;"><span class="signal-label">Active brokerages</span><span class="signal-val" style="font-size:11px;">${c.brokerageArea||'N/A'}</span></div>
+    </div>
+    <p style="font-size:10px;color:var(--muted);margin-bottom:14px;">Contact info is AI-estimated. Verify via City of Edmonton property search or a licensed broker.</p>
+
+    <div class="sec-title">Add your financial data</div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Layer in your own numbers to refine the risk score.</p>
+    <div class="inp-grid">
+      <div class="inp-wrap"><label>DSCR</label><input id="f-dscr" type="number" step="0.01" placeholder="e.g. 1.25" value="${asset.userInputs?.dscr||''}"/></div>
+      <div class="inp-wrap"><label>LTV (%)</label><input id="f-ltv" type="number" placeholder="e.g. 65" value="${asset.userInputs?.ltv||''}"/></div>
+      <div class="inp-wrap"><label>Actual vacancy (%)</label><input id="f-vac" type="number" placeholder="e.g. 8" value="${asset.userInputs?.vac||''}"/></div>
+      <div class="inp-wrap"><label>Lease runway (mo)</label><input id="f-lease" type="number" placeholder="e.g. 24" value="${asset.userInputs?.lease||''}"/></div>
+      <div class="inp-wrap"><label>Interest rate (%)</label><input id="f-rate" type="number" step="0.1" placeholder="e.g. 5.5" value="${asset.userInputs?.rate||''}"/></div>
+      <div class="inp-wrap"><label>Your cap rate (%)</label><input id="f-cap" type="number" step="0.1" placeholder="e.g. 5.8" value="${asset.userInputs?.cap||''}"/></div>
+    </div>
+    <button class="btn-primary" onclick="recalcScore(${idx},${isSaved})">Recalculate risk score</button>
+    <button class="btn-secondary" onclick="exportReport(${idx},${isSaved})">Export PDF report</button>
+    <div style="height:20px;"></div>`;
+}
+
+// ── SAVE / UNSAVE ─────────────────────────────────────────
+window.toggleSave=function(idx,isSaved){
+  const asset=isSaved?savedAssets[idx]:assets[idx];
+  const btn=document.getElementById('save-btn');
+  const alreadySaved=savedAssets.some(a=>a.name===asset.name&&a.addr===asset.addr);
+
+  if(alreadySaved){
+    const si=savedAssets.findIndex(a=>a.name===asset.name&&a.addr===asset.addr);
+    if(si>-1){
+      if(savedAssets[si].marker) map.removeLayer(savedAssets[si].marker);
+      savedAssets.splice(si,1);
+    }
+    btn.textContent='+ Save to portfolio';
+    btn.classList.remove('saved');
+  } else {
+    const toSave={...asset};
+    delete toSave.marker;
+    const s=asset.userScore||asset.info.baseRiskScore;
+    const marker=L.marker([asset.lat,asset.lon],{icon:makeIcon(s,asset.info.propertyType)}).addTo(map);
+    marker.bindPopup(popupHTML(asset.name,s,asset.info));
+    toSave.marker=marker;
+    const newIdx=savedAssets.length;
+    toSave.marker.on('click',()=>showPropertyPanel(toSave,newIdx,true));
+    savedAssets.push(toSave);
+    btn.textContent='✓ Saved to portfolio';
+    btn.classList.add('saved');
+  }
+  persistSaved();
+  updateSavedList();
+};
+
+// ── SCORING ──────────────────────────────────────────────
+window.recalcScore=function(idx,isSaved){
+  const asset=isSaved?savedAssets[idx]:assets[idx];
+  const dscr=parseFloat(document.getElementById('f-dscr').value)||null;
+  const ltv=parseFloat(document.getElementById('f-ltv').value)||null;
+  const vac=parseFloat(document.getElementById('f-vac').value)||null;
+  const lease=parseFloat(document.getElementById('f-lease').value)||null;
+  const rate=parseFloat(document.getElementById('f-rate').value)||null;
+  const cap=parseFloat(document.getElementById('f-cap').value)||null;
+  asset.userInputs={dscr,ltv,vac,lease,rate,cap};
+  let s=asset.info.baseRiskScore*0.4;
+  if(vac!=null)s+=vac>15?20:vac>8?12:vac>4?5:0;
+  if(dscr!=null)s+=dscr<1.0?26:dscr<1.1?18:dscr<1.25?10:dscr<1.4?4:0;
+  if(ltv!=null)s+=ltv>75?18:ltv>68?11:ltv>60?5:0;
+  if(lease!=null)s+=lease<6?15:lease<12?9:lease<24?3:0;
+  if(rate!=null)s+=rate>6.5?10:rate>5.5?5:rate>4.5?2:0;
+  if(cap!=null)s+=cap<4.5?10:cap<5?5:cap<5.5?2:0;
+  asset.userScore=Math.min(100,Math.round(s));
+  asset.marker.setIcon(makeIcon(asset.userScore,asset.info.propertyType));
+  if(isSaved)persistSaved();
+  updateSavedList();
+  showPropertyPanel(asset,idx,isSaved);
+};
+
+// ── PDF EXPORT ───────────────────────────────────────────
+window.exportReport=function(idx,isSaved){
+  const asset=isSaved?savedAssets[idx]:assets[idx];
+  const s=asset.userScore||asset.info.baseRiskScore;
+  const i=asset.info;
+  const c=i.contactInfo||{};
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>CRE Risk Report — ${asset.name}</title>
+  <style>body{font-family:Arial,sans-serif;padding:48px;max-width:720px;margin:auto;color:#131B23;}
+  h1{font-size:22px;font-weight:700;margin-bottom:4px;}
+  .sub{font-size:13px;color:#7a7260;margin-bottom:24px;}
+  .score-badge{display:inline-flex;align-items:center;gap:14px;padding:14px 22px;border-radius:12px;background:${riskBg(s)};margin-bottom:24px;}
+  .score-num{font-size:32px;font-weight:700;color:${riskText(s)};}
+  .score-lbl{font-size:15px;font-weight:700;color:${riskText(s)};}
+  .score-meta{font-size:11px;color:#7a7260;margin-top:3px;}
+  h2{font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:#aaa;margin:20px 0 8px;border-bottom:1px solid #EEE9D4;padding-bottom:5px;}
+  table{width:100%;border-collapse:collapse;margin-bottom:4px;}
+  td{padding:7px 0;border-bottom:1px solid #EEE9D4;font-size:13px;}
+  td:first-child{color:#7a7260;width:45%;}td:last-child{font-weight:600;}
+  .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;margin:2px;}
+  p{font-size:13px;line-height:1.7;color:#333;}
+  .prox{font-size:12px;color:#555;padding:4px 0;border-bottom:1px solid #EEE9D4;}
+  footer{margin-top:40px;padding-top:12px;border-top:1px solid #EEE9D4;font-size:10px;color:#aaa;}
+  </style></head><body>
+  <h1>CRE Risk Report</h1>
+  <div class="sub">${asset.name} — ${asset.addr}</div>
+  <div class="score-badge"><div class="score-num">${s}</div><div><div class="score-lbl">${riskLabel(s)}</div><div class="score-meta">${i.propertyType} · ${i.neighbourhood} · ${i.marketTrend} market</div></div></div>
+  <h2>Property details</h2>
+  <table>
+    <tr><td>Property type</td><td>${i.propertyType}</td></tr>
+    <tr><td>Neighbourhood</td><td>${i.neighbourhood}</td></tr>
+    <tr><td>Market trend</td><td>${i.marketTrend}</td></tr>
+    <tr><td>Est. vacancy</td><td>${i.marketVacancyEst}%</td></tr>
+    <tr><td>Est. cap rate</td><td>${i.capRateEst.toFixed(1)}%</td></tr>
+    <tr><td>Walk score</td><td>${i.walkScore}/100</td></tr>
+    <tr><td>Transit score</td><td>${i.transitScore}/100</td></tr>
+    ${asset.userScore?`<tr><td>Adjusted risk score</td><td>${asset.userScore}/100</td></tr>`:''}
+  </table>
+  <h2>Contact & ownership</h2>
+  <table>
+    <tr><td>Owner type</td><td>${c.ownerType||'N/A'}</td></tr>
+    <tr><td>Est. value range</td><td>${c.assessedValueEst||'N/A'}</td></tr>
+    <tr><td>Construction era</td><td>${c.yearBuiltEst||'N/A'}</td></tr>
+    <tr><td>Area mgmt firms</td><td>${c.managementCompany||'N/A'}</td></tr>
+    <tr><td>Active brokerages</td><td>${c.brokerageArea||'N/A'}</td></tr>
+  </table>
+  <h2>Submarket analysis</h2>
+  <p>${i.neighbourhoodProfile} ${i.marketTrendReason}</p>
+  <h2>Proximity signals</h2>
+  ${i.proximitySignals.map(s=>`<div class="prox">› ${s}</div>`).join('')}
+  <h2>Risk factors</h2>
+  ${i.riskFactors.map(r=>`<span class="tag" style="background:#FCEBEB;color:#A32D2D;">⚠ ${r}</span>`).join(' ')}
+  <h2>Opportunities</h2>
+  ${i.opportunities.map(o=>`<span class="tag" style="background:#EAF3DE;color:#3B6D11;">↑ ${o}</span>`).join(' ')}
+  <h2>Comparables</h2>
+  ${(i.comparables||[]).map(c=>`<span class="tag" style="background:#EEF0FF;color:#534AB7;">${c}</span>`).join(' ')}
+  <footer>Edmonton CRE Risk Tool · ${new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'})} · AI-assisted analysis for informational purposes only. Verify with licensed appraisers and brokers before investment decisions.</footer>
+  </body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(),400);
+};
+
+// ── UI HELPERS ───────────────────────────────────────────
+function showLoading(msg){
+  document.getElementById('sbody').innerHTML=`<div class="loading-wrap"><div class="spinner"></div><span>${msg}</span></div>`;
+}
+function showError(msg){
+  document.getElementById('sbody').innerHTML=`<div class="error-box">${msg}</div><button class="back-btn" onclick="resetPanel()">← Try again</button>`;
+}
+
+window.resetPanel=function(){
+  document.getElementById('sbody').innerHTML=`<div id="main-panel">
+    <div class="sec-title">Browse by property type</div>
+    <div class="prop-type-item" onclick="browseType('Office')"><div class="prop-type-icon" style="background:#EEF2FF;">🏢</div><div><div class="prop-type-name">Office</div><div class="prop-type-desc">Downtown, suburban office parks</div></div><div class="prop-type-arrow">›</div></div>
+    <div class="prop-type-item" onclick="browseType('Retail')"><div class="prop-type-icon" style="background:#FFF3E0;">🛍️</div><div><div class="prop-type-name">Retail</div><div class="prop-type-desc">Strip malls, high street, power centres</div></div><div class="prop-type-arrow">›</div></div>
+    <div class="prop-type-item" onclick="browseType('Industrial')"><div class="prop-type-icon" style="background:#F3F9EE;">🏭</div><div><div class="prop-type-name">Industrial</div><div class="prop-type-desc">Warehouses, logistics, flex space</div></div><div class="prop-type-arrow">›</div></div>
+    <div class="prop-type-item" onclick="browseType('Multifamily')"><div class="prop-type-icon" style="background:#FEF0F0;">🏘️</div><div><div class="prop-type-name">Multifamily</div><div class="prop-type-desc">Apartment buildings, mixed-use residential</div></div><div class="prop-type-arrow">›</div></div>
+    <div class="prop-type-item" onclick="browseType('Mixed-Use')"><div class="prop-type-icon" style="background:#F0F7FF;">🏙️</div><div><div class="prop-type-name">Mixed-Use</div><div class="prop-type-desc">Retail + residential, live-work</div></div><div class="prop-type-arrow">›</div></div>
+    <div class="sec-title" style="margin-top:16px;">Quick search</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px;">
+      <span class="try-tag" onclick="quickSearch('Jasper Avenue Edmonton')">Jasper Ave</span>
+      <span class="try-tag" onclick="quickSearch('West Edmonton Mall')">West Edmonton Mall</span>
+      <span class="try-tag" onclick="quickSearch('104 Street Edmonton')">104 Street</span>
+      <span class="try-tag" onclick="quickSearch('Leduc Alberta')">Leduc</span>
+      <span class="try-tag" onclick="quickSearch('St Albert Alberta')">St. Albert</span>
+      <span class="try-tag" onclick="quickSearch('Sherwood Park Alberta')">Sherwood Park</span>
+    </div>
+    <div id="saved-section" style="display:${savedAssets.length?'block':'none'};">
+      <div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Saved assets</span>
+        <span id="saved-count" style="font-size:10px;background:var(--accent);color:var(--bg);padding:1px 7px;border-radius:10px;">${savedAssets.length}</span>
+      </div>
+      <div id="saved-list"></div>
+    </div>
+  </div>`;
+  updateSavedList();
+};
+
+window.deleteAsset=function(idx,e){
+  e.stopPropagation();
+  if(savedAssets[idx]?.marker) map.removeLayer(savedAssets[idx].marker);
+  savedAssets.splice(idx,1);
+  persistSaved();
+  resetPanel();
+};
+
+function updateSavedList(){
+  const section=document.getElementById('saved-section');
+  const list=document.getElementById('saved-list');
+  const count=document.getElementById('saved-count');
+  if(!section||!list)return;
+  if(savedAssets.length){section.style.display='block';if(count)count.textContent=savedAssets.length;}
+  else{section.style.display='none';}
+  list.innerHTML='';
+  savedAssets.forEach((a,i)=>{
+    const s=a.userScore||a.info.baseRiskScore;
+    const item=document.createElement('div');
+    item.className='pin-item';
+    item.innerHTML=`
+      <div class="pin-dot" style="background:${riskColor(s)};"></div>
+      <div style="flex:1;min-width:0;">
+        <div class="pin-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</div>
+        <div class="pin-sub">${a.info.propertyType} · ${a.info.neighbourhood}</div>
+      </div>
+      <div class="pin-score" style="color:${riskColor(s)};margin-right:4px;">${s}</div>
+      <div class="pin-actions"><button class="pin-del" onclick="deleteAsset(${i},event)" title="Remove">✕</button></div>`;
+    item.addEventListener('click',()=>{
+      if(a.marker){map.setView([a.lat,a.lon],15);a.marker.openPopup();}
+      showPropertyPanel(a,i,true);
+    });
+    list.appendChild(item);
+  });
+}
+
+}; // end window.onload
+</script>
+
+
+</body></html>
