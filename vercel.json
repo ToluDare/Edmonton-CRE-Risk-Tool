@@ -1,0 +1,17 @@
+{
+  "functions": {
+    "analyze.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/analyze",
+      "dest": "/analyze.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
