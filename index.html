@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- saved from url=(0062)file:///C:/Users/daret/Downloads/edmonton_cre_risk_tool_4.html -->
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="referrer" content="origin">
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="referrer" content="origin"/>
 <title>Edmonton CRE Risk Tool</title>
-<link rel="stylesheet" href="./Edmonton CRE Risk Tool V3_files/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 :root{
   --bg:#F2F2F7;
@@ -190,7 +190,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display'
 .leaflet-popup-tip{display:none!important;}
 </style>
 </head>
-<body class="">
+<body>
 <div class="app">
 
   <!-- NAVBAR -->
@@ -215,7 +215,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display'
         </div>
       </div>
     </div>
-    <div class="navbar-sub"><p>Commercial Real Estate Risk Intelligence · Edmonton &amp; Region</p></div>
+    <div class="navbar-sub"><p>Commercial Real Estate Risk Intelligence · Edmonton & Region</p></div>
   </div>
 
   <div class="main">
@@ -225,30 +225,77 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display'
       <div class="search-bar">
         <div class="search-inner">
           <span class="search-icon">⌕</span>
-          <input id="search-input" placeholder="Search Edmonton property or address" autocomplete="off">
-          <button id="search-clear" onclick="clearSearch()" style="display: block;">✕</button>
+          <input id="search-input" placeholder="Search Edmonton property or address" autocomplete="off"/>
+          <button id="search-clear" onclick="clearSearch()">✕</button>
         </div>
       </div>
-      <div id="sugg-box" style="display: none;"></div>
+      <div id="sugg-box"></div>
 
       <!-- FILTER CHIPS -->
       <div class="filter-scroll">
-        <button class="chip active" onclick="setFilter(&#39;all&#39;,this)">All</button>
-        <button class="chip" onclick="setFilter(&#39;Office&#39;,this)">🏢 Office</button>
-        <button class="chip" onclick="setFilter(&#39;Retail&#39;,this)">🛍️ Retail</button>
-        <button class="chip" onclick="setFilter(&#39;Industrial&#39;,this)">🏭 Industrial</button>
-        <button class="chip" onclick="setFilter(&#39;Multifamily&#39;,this)">🏘️ Multifamily</button>
-        <button class="chip" onclick="setFilter(&#39;Mixed-Use&#39;,this)">🏙️ Mixed-Use</button>
+        <button class="chip active" onclick="setFilter('all',this)">All</button>
+        <button class="chip" onclick="setFilter('Office',this)">🏢 Office</button>
+        <button class="chip" onclick="setFilter('Retail',this)">🛍️ Retail</button>
+        <button class="chip" onclick="setFilter('Industrial',this)">🏭 Industrial</button>
+        <button class="chip" onclick="setFilter('Multifamily',this)">🏘️ Multifamily</button>
+        <button class="chip" onclick="setFilter('Mixed-Use',this)">🏙️ Mixed-Use</button>
       </div>
 
       <div class="sbody" id="sbody">
-    <div class="back-row" onclick="resetPanel()"><span class="back-arrow">‹</span><span style="color:var(--blue);font-size:16px;">Back</span></div>
-    <div class="error-card"><div class="error-title">Analysis failed</div><div class="error-text">Failed to fetch</div></div></div>
+        <div id="main-panel">
+
+          <div class="section-header">Browse by type</div>
+          <div class="list-group">
+            <div class="list-row" onclick="browseType('Office')">
+              <div class="list-icon" style="background:rgba(88,86,214,0.1);">🏢</div>
+              <div class="list-content"><div class="list-title">Office</div><div class="list-sub">Downtown core, suburban parks</div></div>
+              <span class="list-chevron">›</span>
+            </div>
+            <div class="list-row" onclick="browseType('Retail')">
+              <div class="list-icon" style="background:rgba(255,149,0,0.1);">🛍️</div>
+              <div class="list-content"><div class="list-title">Retail</div><div class="list-sub">Strip malls, high street, power centres</div></div>
+              <span class="list-chevron">›</span>
+            </div>
+            <div class="list-row" onclick="browseType('Industrial')">
+              <div class="list-icon" style="background:rgba(52,199,89,0.1);">🏭</div>
+              <div class="list-content"><div class="list-title">Industrial</div><div class="list-sub">Warehouses, logistics, flex space</div></div>
+              <span class="list-chevron">›</span>
+            </div>
+            <div class="list-row" onclick="browseType('Multifamily')">
+              <div class="list-icon" style="background:rgba(255,59,48,0.1);">🏘️</div>
+              <div class="list-content"><div class="list-title">Multifamily</div><div class="list-sub">Apartments, mixed-use residential</div></div>
+              <span class="list-chevron">›</span>
+            </div>
+            <div class="list-row" onclick="browseType('Mixed-Use')">
+              <div class="list-icon" style="background:rgba(0,122,255,0.1);">🏙️</div>
+              <div class="list-content"><div class="list-title">Mixed-Use</div><div class="list-sub">Retail + residential, live-work</div></div>
+              <span class="list-chevron">›</span>
+            </div>
+          </div>
+
+          <div class="section-header">Quick search</div>
+          <div class="quick-tags">
+            <span class="qtag" onclick="quickSearch('Jasper Avenue Edmonton')">Jasper Ave</span>
+            <span class="qtag" onclick="quickSearch('West Edmonton Mall')">West Edmonton Mall</span>
+            <span class="qtag" onclick="quickSearch('Whyte Avenue Edmonton')">Whyte Ave</span>
+            <span class="qtag" onclick="quickSearch('Leduc Alberta')">Leduc</span>
+            <span class="qtag" onclick="quickSearch('St Albert Alberta')">St. Albert</span>
+            <span class="qtag" onclick="quickSearch('Sherwood Park Alberta')">Sherwood Park</span>
+            <span class="qtag" onclick="quickSearch('Nisku Alberta')">Nisku</span>
+          </div>
+
+          <div id="saved-section" style="display:none;">
+            <div class="section-header">Saved assets</div>
+            <div class="list-group"><div id="saved-list"></div></div>
+          </div>
+
+        </div>
+      </div>
     </div>
 
     <!-- MAP -->
     <div class="map-wrap">
-      <div id="map" class="leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom" tabindex="0" style="position: relative;"><div class="leaflet-pane leaflet-map-pane" style="transform: translate3d(-213px, 108.035px, 0px);"><div class="leaflet-pane leaflet-tile-pane"><div class="leaflet-layer " style="z-index: 1; opacity: 1;"><div class="leaflet-tile-container leaflet-zoom-animated" style="z-index: 15; transform: translate3d(-22137px, -10760px, 0px) scale(16);"></div><div class="leaflet-tile-container leaflet-zoom-animated" style="z-index: 19; transform: translate3d(0px, 0px, 0px) scale(1);"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10606.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(487px, 120px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10606(1).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(743px, 120px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10605.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(487px, -136px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10605(1).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(743px, -136px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10607.png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(487px, 376px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10607(1).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(743px, 376px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10606(2).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(231px, 120px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10606(3).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(999px, 120px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10605(2).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(231px, -136px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10605(3).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(999px, -136px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10607(2).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(231px, 376px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10607(3).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(999px, 376px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10606(4).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-25px, 120px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10606(5).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1255px, 120px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10605(4).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-25px, -136px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10605(5).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1255px, -136px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10607(4).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(-25px, 376px, 0px); opacity: 1;"><img crossorigin="" alt="" src="./Edmonton CRE Risk Tool V3_files/10607(5).png" class="leaflet-tile leaflet-tile-loaded" style="width: 256px; height: 256px; transform: translate3d(1255px, 376px, 0px); opacity: 1;"></div></div></div><div class="leaflet-pane leaflet-overlay-pane"><svg pointer-events="none" class="leaflet-zoom-animated" width="1411" height="745" viewBox="95 -170 1411 745" style="transform: translate3d(95px, -170px, 0px);"><g><path stroke="none" stroke-opacity="1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="#1C1C1E" fill-opacity="0.65" fill-rule="evenodd" d="M1509 578L1509 -173L92 -173L92 578zM1509 578L92 578L92 -173L1509 -173z"></path><path stroke="#007AFF" stroke-opacity="1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,4" fill="#007AFF" fill-opacity="0" fill-rule="evenodd" d="M1508 577L94 577L94 -171L1508 -171z"></path></g></svg></div><div class="leaflet-pane leaflet-shadow-pane"></div><div class="leaflet-pane leaflet-marker-pane"></div><div class="leaflet-pane leaflet-tooltip-pane"></div><div class="leaflet-pane leaflet-popup-pane"></div><div class="leaflet-proxy leaflet-zoom-animated" style="transform: translate3d(1.54988e+06px, 2.71522e+06px, 0px) scale(16384);"></div></div><div class="leaflet-control-container"><div class="leaflet-top leaflet-left"></div><div class="leaflet-top leaflet-right"></div><div class="leaflet-bottom leaflet-left"></div><div class="leaflet-bottom leaflet-right"><div class="leaflet-control-zoom leaflet-bar leaflet-control"><a class="leaflet-control-zoom-in" href="file:///C:/Users/daret/Downloads/edmonton_cre_risk_tool_4.html#" title="Zoom in" role="button" aria-label="Zoom in" aria-disabled="false"><span aria-hidden="true">+</span></a><a class="leaflet-control-zoom-out" href="file:///C:/Users/daret/Downloads/edmonton_cre_risk_tool_4.html#" title="Zoom out" role="button" aria-label="Zoom out" aria-disabled="false"><span aria-hidden="true">−</span></a></div><div class="leaflet-control-attribution leaflet-control"><a href="https://leafletjs.com/" title="A JavaScript library for interactive maps"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" class="leaflet-attribution-flag"><path fill="#4C7BE1" d="M0 0h12v4H0z"></path><path fill="#FFD500" d="M0 4h12v3H0z"></path><path fill="#E0BC00" d="M0 7h12v1H0z"></path></svg> Leaflet</a> <span aria-hidden="true">|</span> © <a href="https://openstreetmap.org/">OpenStreetMap</a> contributors</div></div></div></div>
+      <div id="map"></div>
       <div class="map-pill" id="map-pill">Edmonton, Alberta</div>
       <div class="map-legend">
         <div class="leg-title">Risk level</div>
@@ -677,6 +724,5 @@ function updateSaved(){
 
 }; // end window.onload
 </script>
-
-
-</body></html>
+</body>
+</html>
