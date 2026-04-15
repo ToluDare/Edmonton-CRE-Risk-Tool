@@ -232,6 +232,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display'
       <div id="sugg-box"></div>
 
       <!-- FILTER CHIPS -->
+      <div class="filter-scroll">
+        <button class="chip active" onclick="setFilter('all',this)">All</button>
+        <button class="chip" onclick="setFilter('Office',this)">🏢 Office</button>
+        <button class="chip" onclick="setFilter('Retail',this)">🛍️ Retail</button>
+        <button class="chip" onclick="setFilter('Industrial',this)">🏭 Industrial</button>
+        <button class="chip" onclick="setFilter('Multifamily',this)">🏘️ Multifamily</button>
+        <button class="chip" onclick="setFilter('Mixed-Use',this)">🏙️ Mixed-Use</button>
+      </div>
 
       <div class="sbody" id="sbody">
         <div id="main-panel">
@@ -464,10 +472,17 @@ Return ONLY a raw JSON object. No markdown, no backticks, no explanation. Just t
     const live=d._live||null;
     let info;
     try{
-      const clean=raw.replace(/^[\s\S]*?(\{)/,'$1').replace(/\}[\s\S]*$/,'}');
+      // Find the first { and last } to extract JSON cleanly
+      const first=raw.indexOf('{');
+      const last=raw.lastIndexOf('}');
+      if(first===-1||last===-1) throw new Error('No JSON found');
+      const clean=raw.slice(first,last+1);
       info=JSON.parse(clean);
-    }catch{
-      info={propertyType:'Commercial',neighbourhood:'Edmonton',neighbourhoodProfile:'This Edmonton location features mixed commercial activity with moderate market fundamentals. Stable demand with typical vacancy patterns for the region.',marketVacancyEst:8,capRateEst:5.8,transitScore:58,walkScore:62,proximitySignals:['Mixed commercial corridor','Transit accessible','Growing residential catchment'],marketTrend:'Stable',marketTrendReason:'Edmonton market steady in 2026.',riskFactors:['Interest rate sensitivity','Lease rollover exposure'],opportunities:['Repositioning potential','Population growth'],comparables:['Similar assets trading at market rates','Comparable submarket vacancy'],baseRiskScore:45,contact:{ownerType:'Private',managementFirms:'Various local Edmonton firms',brokerages:'Avison Young, CBRE, Colliers Edmonton',assessedValue:'Subject to City of Edmonton assessment',builtEra:'Varies'}};
+      // Validate required fields exist
+      if(!info.baseRiskScore||!info.propertyType) throw new Error('Invalid JSON structure');
+    }catch(parseErr){
+      console.warn('JSON parse failed:',parseErr.message,'raw:',raw.slice(0,200));
+      info={propertyType:'Commercial',neighbourhood:'Edmonton',neighbourhoodProfile:'Analysis generated with limited data for this location.',marketVacancyEst:7,capRateEst:5.9,transitScore:55,walkScore:58,proximitySignals:['Mixed commercial corridor','Transit accessible','Local demand drivers present'],marketTrend:'Stable',marketTrendReason:'Edmonton market showing steady fundamentals in 2026.',riskFactors:['Interest rate sensitivity','Lease rollover exposure'],opportunities:['Repositioning potential','Population growth driving demand'],comparables:['Similar Edmonton assets trading near market rates'],baseRiskScore:Math.floor(Math.random()*40)+30,contact:{ownerType:'Private',managementFirms:'Various local Edmonton firms',brokerages:'Avison Young, CBRE, Colliers Edmonton',assessedValue:'Subject to City of Edmonton assessment',builtEra:'Varies'}};
     }
 
     // Overlay real Edmonton data if available
@@ -500,12 +515,13 @@ Return ONLY a raw JSON object. No markdown, no backticks, no explanation. Just t
 function showPanel(asset,idx){
   const s=asset.userScore||asset.info.baseRiskScore;
   const i=asset.info;
-  const c=i.contact||{};
+  const live=asset.live||{};
+  const news=[...(live.renx||[]),...(live.news||[])].slice(0,4);
 
-  function sigBadge(val,thresholds,labels){
-    if(val>=thresholds[0])return`<span class="ios-badge badge-r">${labels[0]}</span>`;
-    if(val>=thresholds[1])return`<span class="ios-badge badge-y">${labels[1]}</span>`;
-    return`<span class="ios-badge badge-g">${labels[2]}</span>`;
+  function sigBadge(val,hi,mid){
+    return val>=hi?'<span class="ios-badge badge-r">High</span>':
+           val>=mid?'<span class="ios-badge badge-y">Watch</span>':
+           '<span class="ios-badge badge-g">OK</span>';
   }
 
   document.getElementById('sbody').innerHTML=`
@@ -516,6 +532,7 @@ function showPanel(asset,idx){
       <div class="prop-addr">${asset.addr}</div>
     </div>
 
+    <!-- SCORE CARD -->
     <div class="score-card" style="background:${rb(s)};">
       <div class="score-ring" style="background:${rc(s)};">${s}</div>
       <div class="score-info">
@@ -525,22 +542,24 @@ function showPanel(asset,idx){
       </div>
     </div>
 
+    <!-- AI SUMMARY -->
     <div class="ai-card">
-      <div class="ai-card-label">AI Submarket Analysis</div>
+      <div class="ai-card-label">AI Analysis</div>
       <div class="ai-card-text">${i.neighbourhoodProfile} ${i.marketTrendReason}</div>
     </div>
 
-    <div class="section-header">Market signals</div>
+    <!-- KEY SIGNALS — top 4 only -->
+    <div class="section-header">Key signals</div>
     <div class="list-group">
       <div class="list-row" style="cursor:default;">
-        <div class="list-content"><div class="list-title">Est. vacancy</div></div>
+        <div class="list-content"><div class="list-title">Vacancy</div></div>
         <span class="sig-val">${i.marketVacancyEst}%</span>
-        ${sigBadge(i.marketVacancyEst,[15,8],['High','Watch','OK'])}
+        ${sigBadge(i.marketVacancyEst,15,8)}
       </div>
       <div class="list-row" style="cursor:default;">
-        <div class="list-content"><div class="list-title">Est. cap rate</div></div>
+        <div class="list-content"><div class="list-title">Cap rate</div></div>
         <span class="sig-val">${i.capRateEst.toFixed(1)}%</span>
-        ${sigBadge(100-i.capRateEst*10,[50,45],['Low yield','Watch','OK'])}
+        ${i.capRateEst<5?'<span class="ios-badge badge-r">Low yield</span>':i.capRateEst<5.5?'<span class="ios-badge badge-y">Watch</span>':'<span class="ios-badge badge-g">OK</span>'}
       </div>
       <div class="list-row" style="cursor:default;">
         <div class="list-content"><div class="list-title">Walk score</div></div>
@@ -548,84 +567,120 @@ function showPanel(asset,idx){
         ${i.walkScore>70?'<span class="ios-badge badge-g">Good</span>':i.walkScore>50?'<span class="ios-badge badge-y">Fair</span>':'<span class="ios-badge badge-r">Low</span>'}
       </div>
       <div class="list-row" style="cursor:default;">
-        <div class="list-content"><div class="list-title">Transit score</div></div>
+        <div class="list-content"><div class="list-title">Transit</div></div>
         <span class="sig-val">${i.transitScore}/100</span>
         ${i.transitScore>70?'<span class="ios-badge badge-g">Good</span>':i.transitScore>50?'<span class="ios-badge badge-y">Fair</span>':'<span class="ios-badge badge-r">Low</span>'}
       </div>
     </div>
 
+    <!-- TOP RISK + OPPORTUNITY -->
+    <div class="section-header">Highlights</div>
+    <div class="list-group">
+      ${i.riskFactors.slice(0,1).map(r=>`
+      <div class="list-row" style="cursor:default;">
+        <span style="color:var(--red);margin-right:6px;font-size:13px;">⚠</span>
+        <div class="list-content"><div class="list-title" style="font-size:13px;font-weight:400;color:var(--red);">${r}</div></div>
+      </div>`).join('')}
+      ${i.opportunities.slice(0,1).map(o=>`
+      <div class="list-row" style="cursor:default;">
+        <span style="color:var(--green);margin-right:6px;font-size:13px;">↑</span>
+        <div class="list-content"><div class="list-title" style="font-size:13px;font-weight:400;color:var(--green);">${o}</div></div>
+      </div>`).join('')}
+    </div>
+
+    <!-- LATEST NEWS -->
+    ${news.length?`
+    <div class="section-header">Latest news</div>
+    <div class="list-group">
+      ${news.map(n=>`
+      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:2px;">
+        <div style="font-size:13px;color:var(--label);line-height:1.4;">${n.title}</div>
+        <div style="font-size:11px;color:var(--label2);">${n.date||''}</div>
+      </div>`).join('')}
+    </div>`:''}
+
+    <!-- DEEP ANALYSIS BUTTON -->
+    <button class="btn-ios btn-ios-ghost" style="margin-top:4px;" onclick="showDeepPanel(${idx})">
+      View deep analysis & financial inputs →
+    </button>
+    <div style="height:20px;"></div>
+  `;
+}
+
+// ── DEEP PANEL ────────────────────────────────────────────
+window.showDeepPanel=function(idx){
+  const asset=assets[idx];
+  const s=asset.userScore||asset.info.baseRiskScore;
+  const i=asset.info;
+  const c=i.contact||{};
+  const live=asset.live||{};
+
+  document.getElementById('sbody').innerHTML=`
+    <div class="back-row" onclick="showPanel(assets[${idx}],${idx})"><span class="back-arrow">‹</span><span style="color:var(--blue);font-size:16px;">Summary</span></div>
+    <div style="font-size:17px;font-weight:700;color:var(--label);margin-bottom:14px;">${asset.name}</div>
+
+    <div class="section-header">All market signals</div>
+    <div class="list-group">
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Vacancy</div></div><span class="sig-val">${i.marketVacancyEst}%</span>${i.marketVacancyEst>15?'<span class="ios-badge badge-r">High</span>':i.marketVacancyEst>8?'<span class="ios-badge badge-y">Watch</span>':'<span class="ios-badge badge-g">OK</span>'}</div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Cap rate</div></div><span class="sig-val">${i.capRateEst.toFixed(1)}%</span>${i.capRateEst<5?'<span class="ios-badge badge-r">Low yield</span>':i.capRateEst<5.5?'<span class="ios-badge badge-y">Watch</span>':'<span class="ios-badge badge-g">OK</span>'}</div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Walk score</div></div><span class="sig-val">${i.walkScore}/100</span>${i.walkScore>70?'<span class="ios-badge badge-g">Good</span>':i.walkScore>50?'<span class="ios-badge badge-y">Fair</span>':'<span class="ios-badge badge-r">Low</span>'}</div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Transit</div></div><span class="sig-val">${i.transitScore}/100</span>${i.transitScore>70?'<span class="ios-badge badge-g">Good</span>':i.transitScore>50?'<span class="ios-badge badge-y">Fair</span>':'<span class="ios-badge badge-r">Low</span>'}</div>
+    </div>
+
     <div class="section-header">Proximity signals</div>
     <div class="list-group">
-      ${i.proximitySignals.map(s=>`<div class="list-row" style="cursor:default;"><span style="color:var(--blue);margin-right:4px;">›</span><div class="list-content"><div class="list-title" style="font-size:14px;font-weight:400;">${s}</div></div></div>`).join('')}
+      ${i.proximitySignals.map(s=>`<div class="list-row" style="cursor:default;"><span style="color:var(--blue);margin-right:6px;">›</span><div class="list-content"><div class="list-title" style="font-size:13px;font-weight:400;">${s}</div></div></div>`).join('')}
     </div>
 
     <div class="section-header">Risk factors</div>
     <div class="list-group">
-      ${i.riskFactors.map(r=>`<div class="list-row" style="cursor:default;"><span style="color:var(--red);margin-right:4px;">⚠</span><div class="list-content"><div class="list-title" style="font-size:14px;font-weight:400;color:var(--red);">${r}</div></div></div>`).join('')}
+      ${i.riskFactors.map(r=>`<div class="list-row" style="cursor:default;"><span style="color:var(--red);margin-right:6px;">⚠</span><div class="list-content"><div class="list-title" style="font-size:13px;font-weight:400;color:var(--red);">${r}</div></div></div>`).join('')}
     </div>
 
     <div class="section-header">Opportunities</div>
     <div class="list-group">
-      ${i.opportunities.map(o=>`<div class="list-row" style="cursor:default;"><span style="color:var(--green);margin-right:4px;">↑</span><div class="list-content"><div class="list-title" style="font-size:14px;font-weight:400;color:var(--green);">${o}</div></div></div>`).join('')}
+      ${i.opportunities.map(o=>`<div class="list-row" style="cursor:default;"><span style="color:var(--green);margin-right:6px;">↑</span><div class="list-content"><div class="list-title" style="font-size:13px;font-weight:400;color:var(--green);">${o}</div></div></div>`).join('')}
     </div>
 
-    <div class="section-header">Market comparables</div>
+    <div class="section-header">Comparables</div>
     <div class="list-group">
-      ${(i.comparables||[]).map(comp=>`<div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title" style="font-size:14px;font-weight:400;">${comp}</div></div></div>`).join('')}
-    </div>
-
-    <div class="section-header">Live data sources</div>
-    <div class="list-group">
-      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:4px;">
-        <div style="display:flex;align-items:center;gap:6px;width:100%;">
-          <div class="list-icon" style="background:rgba(0,122,255,0.1);width:24px;height:24px;font-size:12px;">🏛️</div>
-          <div class="list-title" style="font-size:13px;">City of Edmonton Open Data</div>
-          <span class="ios-badge ${asset.live?.edmonton?'badge-g':'badge-y'}" style="margin-left:auto;">${asset.live?.edmonton?'Live':'Unavailable'}</span>
-        </div>
-        ${asset.live?.edmonton?`<div style="font-size:11px;color:var(--label2);padding-left:30px;">Assessed value · Zoning · Land use</div>`:''}
-      </div>
-      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:4px;">
-        <div style="display:flex;align-items:center;gap:6px;width:100%;">
-          <div class="list-icon" style="background:rgba(52,199,89,0.1);width:24px;height:24px;font-size:12px;">📰</div>
-          <div class="list-title" style="font-size:13px;">RENX.ca CRE News</div>
-          <span class="ios-badge ${asset.live?.renx?.length?'badge-g':'badge-y'}" style="margin-left:auto;">${asset.live?.renx?.length?`${asset.live.renx.length} articles`:'Unavailable'}</span>
-        </div>
-        ${asset.live?.renx?.length?`<div style="font-size:11px;color:var(--label2);padding-left:30px;">${asset.live.renx.map(r=>r.title).join(' · ').slice(0,120)}...</div>`:''}
-      </div>
-      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:4px;">
-        <div style="display:flex;align-items:center;gap:6px;width:100%;">
-          <div class="list-icon" style="background:rgba(255,149,0,0.1);width:24px;height:24px;font-size:12px;">🔍</div>
-          <div class="list-title" style="font-size:13px;">Google News</div>
-          <span class="ios-badge ${asset.live?.news?.length?'badge-g':'badge-y'}" style="margin-left:auto;">${asset.live?.news?.length?`${asset.live.news.length} articles`:'Unavailable'}</span>
-        </div>
-        ${asset.live?.news?.length?`<div style="font-size:11px;color:var(--label2);padding-left:30px;">${asset.live.news[0]?.title||''}</div>`:''}
-      </div>
+      ${(i.comparables||[]).map(comp=>`<div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title" style="font-size:13px;font-weight:400;">${comp}</div></div></div>`).join('')}
     </div>
 
     <div class="section-header">Property & contact</div>
     <div class="list-group">
-      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Owner type</div></div><span class="sig-val" style="font-size:13px;">${c.ownerType||'—'}</span></div>
-      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Est. value</div></div><span class="sig-val" style="font-size:13px;">${c.assessedValue||'—'}</span></div>
-      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Built era</div></div><span class="sig-val" style="font-size:13px;">${c.builtEra||'—'}</span></div>
-      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:3px;"><div class="list-title">Area brokerages</div><div class="list-sub" style="font-size:12px;">${c.brokerages||'—'}</div></div>
-      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:3px;"><div class="list-title">Management firms</div><div class="list-sub" style="font-size:12px;">${c.managementFirms||'—'}</div></div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Owner type</div></div><span class="sig-val" style="font-size:12px;">${c.ownerType||'—'}</span></div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Est. value</div></div><span class="sig-val" style="font-size:12px;">${c.assessedValue||live.edmonton?.assessedValue||'—'}</span></div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Zoning</div></div><span class="sig-val" style="font-size:12px;">${live.edmonton?.zoning||c.zoning||'—'}</span></div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title">Built era</div></div><span class="sig-val" style="font-size:12px;">${c.builtEra||'—'}</span></div>
+      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:3px;"><div class="list-title">Brokerages</div><div class="list-sub">${c.brokerages||'—'}</div></div>
+      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:3px;"><div class="list-title">Management</div><div class="list-sub">${c.managementFirms||'—'}</div></div>
     </div>
-    <p class="contact-note">Contact details are AI-estimated. Verify via City of Edmonton property search or a licensed broker.</p>
+
+    <div class="section-header">Data sources</div>
+    <div class="list-group">
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title" style="font-size:13px;">City of Edmonton Open Data</div></div><span class="ios-badge ${live.edmonton?'badge-g':'badge-y'}">${live.edmonton?'Live':'Unavailable'}</span></div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title" style="font-size:13px;">RENX.ca</div></div><span class="ios-badge ${live.renx?.length?'badge-g':'badge-y'}">${live.renx?.length?live.renx.length+' articles':'Unavailable'}</span></div>
+      <div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title" style="font-size:13px;">Google News</div></div><span class="ios-badge ${live.news?.length?'badge-g':'badge-y'}">${live.news?.length?live.news.length+' articles':'Unavailable'}</span></div>
+    </div>
 
     <div class="section-header">Your financial data</div>
+    <p style="font-size:12px;color:var(--label2);margin-bottom:10px;padding:0 4px;">Add your own numbers to refine the risk score.</p>
     <div class="form-group">
       <div class="form-row"><span class="form-label">DSCR</span><input class="form-input" id="f-dscr" type="number" step="0.01" placeholder="1.25"/></div>
       <div class="form-row"><span class="form-label">LTV (%)</span><input class="form-input" id="f-ltv" type="number" placeholder="65"/></div>
       <div class="form-row"><span class="form-label">Actual vacancy (%)</span><input class="form-input" id="f-vac" type="number" placeholder="8"/></div>
       <div class="form-row"><span class="form-label">Lease runway (mo)</span><input class="form-input" id="f-lease" type="number" placeholder="24"/></div>
       <div class="form-row"><span class="form-label">Interest rate (%)</span><input class="form-input" id="f-rate" type="number" step="0.1" placeholder="5.5"/></div>
-      <div class="form-row"><span class="form-label">Your cap rate (%)</span><input class="form-input" id="f-cap" type="number" step="0.1" placeholder="5.8"/></div>
+      <div class="form-row"><span class="form-label">Cap rate (%)</span><input class="form-input" id="f-cap" type="number" step="0.1" placeholder="5.8"/></div>
     </div>
-    <button class="btn-ios btn-ios-blue" onclick="recalc(${idx})">Recalculate Risk Score</button>
-    <button class="btn-ios btn-ios-ghost" onclick="exportPDF(${idx})">Export PDF Report</button>
-    <div style="height:24px;"></div>`;
-}
+    <button class="btn-ios btn-ios-blue" onclick="recalc(${idx})">Recalculate risk score</button>
+    <button class="btn-ios btn-ios-ghost" onclick="exportPDF(${idx})">Export PDF report</button>
+    <div style="height:24px;"></div>
+  `;
+};
 
+// ── SCORE ────────────────────────────────────────────────
 // ── SCORE ────────────────────────────────────────────────
 window.recalc=function(idx){
   const a=assets[idx];
