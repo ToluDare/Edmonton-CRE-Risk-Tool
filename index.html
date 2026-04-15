@@ -232,7 +232,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display'
       <div id="sugg-box"></div>
 
       <!-- FILTER CHIPS -->
-     
 
       <div class="sbody" id="sbody">
         <div id="main-panel">
@@ -437,7 +436,7 @@ async function analyzeProperty(item){
   const name=item.display_name.split(',')[0];
   map.setView([lat,lon],15);
   document.getElementById('map-pill').textContent=name+' · Analyzing...';
-  showLoading('Running AI market analysis...');
+  showLoading('Pulling live data & running AI analysis...');
 
   const prompt=`You are a senior CRE analyst for Edmonton, Alberta (April 2026). Property queried: "${addr}" at coordinates ${lat}, ${lon}.
 
@@ -451,6 +450,8 @@ Return ONLY a raw JSON object. No markdown, no backticks, no explanation. Just t
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1200,
+        lat, lon,
+        address: addr,
         messages:[{role:'user',content:prompt}]
       })
     });
@@ -460,6 +461,7 @@ Return ONLY a raw JSON object. No markdown, no backticks, no explanation. Just t
     }
     const d=await res.json();
     const raw=d.content?.map(b=>b.text||'').join('')||'';
+    const live=d._live||null;
     let info;
     try{
       const clean=raw.replace(/^[\s\S]*?(\{)/,'$1').replace(/\}[\s\S]*$/,'}');
@@ -468,13 +470,22 @@ Return ONLY a raw JSON object. No markdown, no backticks, no explanation. Just t
       info={propertyType:'Commercial',neighbourhood:'Edmonton',neighbourhoodProfile:'This Edmonton location features mixed commercial activity with moderate market fundamentals. Stable demand with typical vacancy patterns for the region.',marketVacancyEst:8,capRateEst:5.8,transitScore:58,walkScore:62,proximitySignals:['Mixed commercial corridor','Transit accessible','Growing residential catchment'],marketTrend:'Stable',marketTrendReason:'Edmonton market steady in 2026.',riskFactors:['Interest rate sensitivity','Lease rollover exposure'],opportunities:['Repositioning potential','Population growth'],comparables:['Similar assets trading at market rates','Comparable submarket vacancy'],baseRiskScore:45,contact:{ownerType:'Private',managementFirms:'Various local Edmonton firms',brokerages:'Avison Young, CBRE, Colliers Edmonton',assessedValue:'Subject to City of Edmonton assessment',builtEra:'Varies'}};
     }
 
+    // Overlay real Edmonton data if available
+    if(live?.edmonton){
+      const e=live.edmonton;
+      if(e.assessedValue && info.contact) info.contact.assessedValue=e.assessedValue;
+      if(e.zoning && info.contact) info.contact.zoning=e.zoning;
+      if(e.neighbourhood) info.neighbourhood=e.neighbourhood;
+      if(e.landUse) info.propertyType=info.propertyType||e.landUse;
+    }
+
     const show=activeFilter==='all'||info.propertyType===activeFilter;
     const marker=L.marker([lat,lon],{icon:makeIcon(info.baseRiskScore)});
     if(show)marker.addTo(map);
     marker.bindPopup(`<div style="font-family:-apple-system,sans-serif;padding:4px 2px;"><div style="font-size:14px;font-weight:600;color:#000;margin-bottom:3px;">${name}</div><div style="font-size:13px;font-weight:700;color:${rc(info.baseRiskScore)};">${rl(info.baseRiskScore)} · ${info.baseRiskScore}/100</div><div style="font-size:12px;color:rgba(60,60,67,0.6);margin-top:2px;">${info.propertyType} · ${info.neighbourhood}</div></div>`);
     marker.openPopup();
 
-    const asset={name,addr,lat,lon,info,marker,userScore:null};
+    const asset={name,addr,lat,lon,info,live,marker,userScore:null};
     assets.push(asset);
     updateSaved();
     document.getElementById('map-pill').textContent=name+' · '+info.neighbourhood;
@@ -561,6 +572,34 @@ function showPanel(asset,idx){
     <div class="section-header">Market comparables</div>
     <div class="list-group">
       ${(i.comparables||[]).map(comp=>`<div class="list-row" style="cursor:default;"><div class="list-content"><div class="list-title" style="font-size:14px;font-weight:400;">${comp}</div></div></div>`).join('')}
+    </div>
+
+    <div class="section-header">Live data sources</div>
+    <div class="list-group">
+      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:4px;">
+        <div style="display:flex;align-items:center;gap:6px;width:100%;">
+          <div class="list-icon" style="background:rgba(0,122,255,0.1);width:24px;height:24px;font-size:12px;">🏛️</div>
+          <div class="list-title" style="font-size:13px;">City of Edmonton Open Data</div>
+          <span class="ios-badge ${asset.live?.edmonton?'badge-g':'badge-y'}" style="margin-left:auto;">${asset.live?.edmonton?'Live':'Unavailable'}</span>
+        </div>
+        ${asset.live?.edmonton?`<div style="font-size:11px;color:var(--label2);padding-left:30px;">Assessed value · Zoning · Land use</div>`:''}
+      </div>
+      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:4px;">
+        <div style="display:flex;align-items:center;gap:6px;width:100%;">
+          <div class="list-icon" style="background:rgba(52,199,89,0.1);width:24px;height:24px;font-size:12px;">📰</div>
+          <div class="list-title" style="font-size:13px;">RENX.ca CRE News</div>
+          <span class="ios-badge ${asset.live?.renx?.length?'badge-g':'badge-y'}" style="margin-left:auto;">${asset.live?.renx?.length?`${asset.live.renx.length} articles`:'Unavailable'}</span>
+        </div>
+        ${asset.live?.renx?.length?`<div style="font-size:11px;color:var(--label2);padding-left:30px;">${asset.live.renx.map(r=>r.title).join(' · ').slice(0,120)}...</div>`:''}
+      </div>
+      <div class="list-row" style="cursor:default;flex-direction:column;align-items:flex-start;gap:4px;">
+        <div style="display:flex;align-items:center;gap:6px;width:100%;">
+          <div class="list-icon" style="background:rgba(255,149,0,0.1);width:24px;height:24px;font-size:12px;">🔍</div>
+          <div class="list-title" style="font-size:13px;">Google News</div>
+          <span class="ios-badge ${asset.live?.news?.length?'badge-g':'badge-y'}" style="margin-left:auto;">${asset.live?.news?.length?`${asset.live.news.length} articles`:'Unavailable'}</span>
+        </div>
+        ${asset.live?.news?.length?`<div style="font-size:11px;color:var(--label2);padding-left:30px;">${asset.live.news[0]?.title||''}</div>`:''}
+      </div>
     </div>
 
     <div class="section-header">Property & contact</div>
