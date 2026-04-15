@@ -299,9 +299,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display'
       <div class="map-pill" id="map-pill">Edmonton, Alberta</div>
       <div class="map-legend">
         <div class="leg-title">Risk level</div>
-        <div class="leg-row"><div class="leg-dot" style="background:#FF3B30;"></div>High (65+)</div>
-        <div class="leg-row"><div class="leg-dot" style="background:#FF9500;"></div>Medium (40–64)</div>
-        <div class="leg-row"><div class="leg-dot" style="background:#34C759;"></div>Low (&lt;40)</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#FF3B30;"></div>Critical (75–100)</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#FF6B35;"></div>High (56–74)</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#FF9500;"></div>Moderate (36–55)</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#34C759;"></div>Low (21–35)</div>
+        <div class="leg-row"><div class="leg-dot" style="background:#00A86B;"></div>Very low (0–20)</div>
       </div>
     </div>
   </div>
@@ -341,11 +343,38 @@ L.polygon(EDM_POLY,{
 // Zoom control — bottom right
 L.control.zoom({position:'bottomright'}).addTo(map);
 
-// ── HELPERS ──────────────────────────────────────────────
-function rc(s){return s>=65?'#FF3B30':s>=40?'#FF9500':'#34C759';}
-function rb(s){return s>=65?'rgba(255,59,48,0.1)':s>=40?'rgba(255,149,0,0.1)':'rgba(52,199,89,0.1)';}
-function rt(s){return s>=65?'#FF3B30':s>=40?'#FF9500':'#34C759';}
-function rl(s){return s>=65?'High risk':s>=40?'Medium risk':'Low risk';}
+// ── HELPERS — 5-tier institutional risk scale ────────────
+// 0-20 Very low | 21-35 Low | 36-55 Moderate | 56-74 High | 75-100 Critical
+function rc(s){
+  return s>=75?'#FF3B30':s>=56?'#FF6B35':s>=36?'#FF9500':s>=21?'#34C759':'#00A86B';
+}
+function rb(s){
+  return s>=75?'rgba(255,59,48,0.1)':s>=56?'rgba(255,107,53,0.1)':s>=36?'rgba(255,149,0,0.1)':s>=21?'rgba(52,199,89,0.1)':'rgba(0,168,107,0.08)';
+}
+function rt(s){ return rc(s); }
+function rl(s){
+  return s>=75?'Critical':s>=56?'High risk':s>=36?'Moderate':s>=21?'Low risk':'Very low';
+}
+function ricon(s){
+  return s>=75?'Critical risk':s>=56?'High risk':s>=36?'Moderate risk':s>=21?'Low risk':'Very low risk';
+}
+// Score confidence based on how many data points were available
+function scoreConfidence(info, live){
+  let points=0, total=6;
+  if(info.marketVacancyEst && info.marketVacancyEst!==8) points++;
+  if(info.capRateEst && info.capRateEst!==5.8) points++;
+  if(info.transitScore && info.transitScore!==58) points++;
+  if(live?.edmonton) points++;
+  if(live?.renx?.length) points++;
+  if(live?.news?.length) points++;
+  const pct=Math.round((points/total)*100);
+  return {
+    points, total, pct,
+    label: pct>=70?'High confidence':pct>=40?'Moderate confidence':'Low confidence',
+    color: pct>=70?'#34C759':pct>=40?'#FF9500':'#FF3B30',
+    bg: pct>=70?'rgba(52,199,89,0.1)':pct>=40?'rgba(255,149,0,0.1)':'rgba(255,59,48,0.1)'
+  };
+}
 
 function makeIcon(score){
   const c=rc(score);
@@ -448,6 +477,9 @@ async function analyzeProperty(item){
 
   const prompt=`You are a senior CRE analyst for Edmonton, Alberta (April 2026). Property queried: "${addr}" at coordinates ${lat}, ${lon}.
 
+Use a 5-tier risk scale: 0-20 Very low, 21-35 Low, 36-55 Moderate, 56-74 High, 75-100 Critical.
+Weight vacancy (25%), debt coverage (25%), leverage (20%), lease rollover (15%), interest rate sensitivity (10%), cap rate compression (5%).
+High vacancy areas, known crime corridors, or distressed submarkets must score 56+. Healthy suburban assets with strong tenancy should score 21-35.
 Return ONLY a raw JSON object. No markdown, no backticks, no explanation. Just the JSON:
 {"propertyType":"Office or Retail or Industrial or Multifamily or Mixed-Use","neighbourhood":"specific Edmonton neighbourhood name","neighbourhoodProfile":"2-3 sentences describing this Edmonton submarket CRE characteristics and 2026 market conditions","marketVacancyEst":number,"capRateEst":number,"transitScore":number,"walkScore":number,"proximitySignals":["signal1","signal2","signal3"],"marketTrend":"Rising or Stable or Declining","marketTrendReason":"one sentence","riskFactors":["factor1","factor2"],"opportunities":["opp1","opp2"],"comparables":["comp1","comp2"],"baseRiskScore":number,"contact":{"ownerType":"likely owner category","managementFirms":"property management firms active in this Edmonton submarket","brokerages":"brokerage firms active here","assessedValue":"estimated assessed value range CAD","builtEra":"estimated construction era"}}`;
 
@@ -533,14 +565,26 @@ function showPanel(asset,idx){
     </div>
 
     <!-- SCORE CARD -->
-    <div class="score-card" style="background:${rb(s)};">
-      <div class="score-ring" style="background:${rc(s)};">${s}</div>
-      <div class="score-info">
-        <div class="score-label" style="color:${rt(s)};">${rl(s)}</div>
-        <div class="score-sub">${i.propertyType} · ${i.neighbourhood}</div>
-        <div class="score-trend" style="color:${rt(s)};">Market: ${i.marketTrend}</div>
-      </div>
-    </div>
+    ${(function(){
+      const conf=scoreConfidence(i,live);
+      return `<div class="score-card" style="background:${rb(s)};">
+        <div class="score-ring" style="background:${rc(s)};">${s}</div>
+        <div class="score-info" style="flex:1;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="score-label" style="color:${rt(s)};">${ricon(s)}</div>
+            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${conf.bg};color:${conf.color};">${conf.label}</span>
+          </div>
+          <div class="score-sub" style="margin-top:3px;">${i.propertyType} · ${i.neighbourhood}</div>
+          <div style="margin-top:6px;background:rgba(0,0,0,0.06);border-radius:4px;height:4px;overflow:hidden;">
+            <div style="height:100%;width:${s}%;background:${rc(s)};border-radius:4px;transition:width 0.6s;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:3px;">
+            <span style="font-size:10px;color:var(--label2);">0 — Very low</span>
+            <span style="font-size:10px;color:var(--label2);">100 — Critical</span>
+          </div>
+        </div>
+      </div>`;
+    })()}
 
     <!-- AI SUMMARY -->
     <div class="ai-card">
@@ -690,14 +734,55 @@ window.recalc=function(idx){
   const lease=parseFloat(document.getElementById('f-lease').value)||null;
   const rate=parseFloat(document.getElementById('f-rate').value)||null;
   const cap=parseFloat(document.getElementById('f-cap').value)||null;
-  let s=a.info.baseRiskScore*0.4;
-  if(vac!=null)s+=vac>15?20:vac>8?12:vac>4?5:0;
-  if(dscr!=null)s+=dscr<1.0?26:dscr<1.1?18:dscr<1.25?10:dscr<1.4?4:0;
-  if(ltv!=null)s+=ltv>75?18:ltv>68?11:ltv>60?5:0;
-  if(lease!=null)s+=lease<6?15:lease<12?9:lease<24?3:0;
-  if(rate!=null)s+=rate>6.5?10:rate>5.5?5:rate>4.5?2:0;
-  if(cap!=null)s+=cap<4.5?10:cap<5?5:cap<5.5?2:0;
-  a.userScore=Math.min(100,Math.round(s));
+  // Weighted scoring model — each metric has a max contribution
+  // Vacancy (25pts) + DSCR (25pts) + LTV (20pts) + Lease (15pts) + Rate (10pts) + Cap (5pts) = 100
+  // Base AI score anchors the starting point at 50% weight
+  let filledInputs=0;
+  let financialScore=0;
+
+  if(vac!=null){
+    filledInputs++;
+    // Vacancy: heavily weighted — empty space = no income
+    financialScore+=vac>25?25:vac>20?22:vac>15?18:vac>10?13:vac>5?7:vac>2?3:0;
+  }
+  if(dscr!=null){
+    filledInputs++;
+    // DSCR: critical — below 1.0 means asset can't service its own debt
+    financialScore+=dscr<0.9?25:dscr<1.0?22:dscr<1.1?18:dscr<1.2?13:dscr<1.25?9:dscr<1.35?5:dscr<1.5?2:0;
+  }
+  if(ltv!=null){
+    filledInputs++;
+    // LTV: leverage risk
+    financialScore+=ltv>80?20:ltv>75?16:ltv>70?12:ltv>65?7:ltv>60?3:0;
+  }
+  if(lease!=null){
+    filledInputs++;
+    // Lease runway: short runway = rollover risk
+    financialScore+=lease<3?15:lease<6?12:lease<12?9:lease<18?6:lease<24?3:lease<36?1:0;
+  }
+  if(rate!=null){
+    filledInputs++;
+    // Interest rate: exposure to refinancing risk
+    financialScore+=rate>7?10:rate>6.5?8:rate>6?6:rate>5.5?4:rate>5?2:0;
+  }
+  if(cap!=null){
+    filledInputs++;
+    // Cap rate: low cap = overpriced relative to income
+    financialScore+=cap<4?5:cap<4.5?4:cap<5?3:cap<5.5?1:0;
+  }
+
+  let finalScore;
+  if(filledInputs===0){
+    // No financial inputs — use AI base score directly
+    finalScore=a.info.baseRiskScore;
+  } else {
+    // Blend: AI location score (40%) + financial inputs (60% of 100pt scale)
+    const maxFinancial=25+25+20+15+10+5; // 100
+    const normalizedFinancial=(financialScore/maxFinancial)*100;
+    finalScore=(a.info.baseRiskScore*0.4)+(normalizedFinancial*0.6);
+  }
+
+  a.userScore=Math.min(100,Math.round(finalScore));
   a.marker.setIcon(makeIcon(a.userScore));
   updateSaved();
   showPanel(a,idx);
